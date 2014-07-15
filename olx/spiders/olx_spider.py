@@ -7,7 +7,7 @@ from scrapy.http import Request
 
 from olx.items import olxItem
 
-from re import match, sub, MULTILINE
+from re import search, sub, MULTILINE, DOTALL
 from sets import Set
 
 from datetime import datetime, timedelta
@@ -33,11 +33,13 @@ class OlxSpider(Spider):
         self.parsed_url_list = Set(get_items_from(self.parsed_date))
 
     def extract_page_list_urls(self, selector):
-        item_list=selector.css('div#itemListContent')
-        url=item_list.css('.second-column-container a').xpath("@href").extract()
-        date=item_list.css('.fourth-column-container ::text').extract()
-        date_striped=[self.get_list_page_date(x.strip()) for x in date]
-        return zip(url, date_striped)
+        item_list=selector.css('div#itemListContent .adListDetails')
+        for item in item_list:
+            date=self.get_list_page_date(item.css('.fourth-column-container ::text').extract())
+            print("Rahul" + str(date))
+            url=item.css('.second-column-container a').xpath("@href").extract()
+            print("Rahul" + str(url))
+            yield (url[0], date)
 
     def get_time(self, date_string):
         if 'Today' in date_string:
@@ -47,27 +49,19 @@ class OlxSpider(Spider):
 
         return datetime.strptime(date_string,'%d/%m/%Y').date()
 
-    def get_list_page_date(self, date_string):
-        '''
-                Returns the parsed datetime object
-        >>> date_today()
-        datetime.datetime(2013, 11, 6, 0, 0)
-        >>> x = OlxSpider()
-        >>> x.get_list_page_date('20 Jun')
-        datetime.datetime(2013, 6, 20, 0, 0)
-        >>> x.get_list_page_date('20 Dec')
-        datetime.datetime(2012, 12, 20, 0, 0)
-
-        :param date_string: Date string from the main list page
-        :return: datetime object
-        '''
+    def get_list_page_date(self, date_string_list):
+        date_string = ' \n '.join(date_string_list)
         if 'Today' in date_string:
             return date_today()
         elif 'Yesterday' in date_string:
             return date_today() - timedelta(1)
-
-        date_without_year = datetime.strptime(date_string, '%d %b').date()
-        return date_without_year.replace(year=self.get_year(date_without_year))
+        else:
+            date=search(r"[^0-9]*([0-9]+\s[a-zA-Z]+)", "\n12 June", flags=DOTALL)
+            if date:
+                date_without_year = datetime.strptime(date.group(1), '%d %b').date()
+                return date_without_year.replace(year=self.get_year(date_without_year))
+            else:
+                raise ValueError("Did not find the date")
 
     def get_year(self, date):
         today = date_today()
