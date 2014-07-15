@@ -36,9 +36,7 @@ class OlxSpider(Spider):
         item_list=selector.css('div#itemListContent .adListDetails')
         for item in item_list:
             date=self.get_list_page_date(item.css('.fourth-column-container ::text').extract())
-            print("Rahul" + str(date))
             url=item.css('.second-column-container a').xpath("@href").extract()
-            print("Rahul" + str(url))
             yield (url[0], date)
 
     def get_time(self, date_string):
@@ -56,7 +54,7 @@ class OlxSpider(Spider):
         elif 'Yesterday' in date_string:
             return date_today() - timedelta(1)
         else:
-            date=search(r"[^0-9]*([0-9]+\s[a-zA-Z]+)", "\n12 June", flags=DOTALL)
+            date=search(r"[^0-9]*([0-9]+\s[a-zA-Z]+)", date_string, flags=DOTALL)
             if date:
                 date_without_year = datetime.strptime(date.group(1), '%d %b').date()
                 return date_without_year.replace(year=self.get_year(date_without_year))
@@ -81,17 +79,19 @@ class OlxSpider(Spider):
         else:
             item['title'] = ''
 
-        phone = selector.css('li.phone ::text').re(r'[0-9\+]+')
+        name_tel = selector.css('#item-data .name-tel:first-child')
+        name = name_tel.css('strong ::text').extract()
+        if name:
+            item['name'] = name[0]
+        else:
+            item['name'] = ''
+
+        phone = name_tel.css('::text').re(r'[0-9\+]{8,12}')
         if phone:
             item['phone'] = int(phone[0].replace('+', ''))
         else:
             item['phone'] = 0
 
-        name = selector.css('.name ::text').re(r"[^ \n]+")
-        if name:
-            item['name'] = name[0]
-        else:
-            item['name'] = ''
 
         price = selector.css('div.price ::text').re(r'[0-9][0-9,]+')
         if price:
