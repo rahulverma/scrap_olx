@@ -73,7 +73,7 @@ class OlxSpider(Spider):
 
         item['url'] = path
 
-        title = selector.css('div#item-title-top::text').extract()
+        title = selector.css('div#item-title-top span:first-child ::text').extract()
         if title:
             item['title'] = title[0].strip()
         else:
